@@ -35,12 +35,14 @@ class WebCapture : public QObject
 public:
     QImage image;
     WebCapture();
+	// Single method to load the web page and output to filesystem at a set scale, size
     void load(const QUrl &url, int zoom, int scale, const QString &outputFileName, int width, int height);
 
 signals:
     void finished();
 
 private slots:
+	// Slots defined by Qt
     void showProgress(int percent);
     void saveResult(bool ok);
 
@@ -60,28 +62,49 @@ WebCapture::WebCapture(): QObject(), m_zoom(100), m_percent(0)
     connect(&m_page, SIGNAL(loadFinished(bool)), this, SLOT(saveResult(bool)));
 }
 
+/**
+ * load the web page and output to filesystem at a set scale, size 
+ * url   - the url to load
+ * zoom  - use WebKit's page zoom 
+ * scale - scale the resulting image
+ * outputFileName - the filepath to save to including extension
+ * width  - the width of the output image
+ * height - the height of the output image
+ */
 void WebCapture::load(const QUrl &url, int zoom, int scale, const QString &outputFileName, int width, int height)
 {
     std::cout << "Loading " << qPrintable(url.toString()) << std::endl;
-    m_zoom = zoom;
-    m_scale = scale;
+	
+	// Store these values in the class instance
+	// as they're used later
+    m_zoom    = zoom;
+    m_scale   = scale;
     m_percent = 0;
     
-    m_height = height;
-    m_width = width;
+    m_height  = height;
+    m_width   = width;
     
     m_fileName = outputFileName;
+	
+	// Create the image
     image = QImage();
+	
+	// Load the page
     m_page.mainFrame()->load(url);
-    m_page.mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAlwaysOff);
-    m_page.mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAlwaysOff);
-    qreal zoom_factor = static_cast<qreal>(m_zoom) / 100.0;
-    m_page.mainFrame()->setZoomFactor(zoom_factor);
+    m_page.mainFrame()->setScrollBarPolicy( Qt::Vertical, Qt::ScrollBarAlwaysOff );
+    m_page.mainFrame()->setScrollBarPolicy( Qt::Horizontal, Qt::ScrollBarAlwaysOff );
     
+	// Set WebKit's zoo factor
+	qreal zoom_factor = static_cast<qreal>( m_zoom ) / 100.0;
+    m_page.mainFrame()->setZoomFactor( zoom_factor );
+    
+	// Calculate the scale factor from the percentage value
     qreal scale_factor = static_cast<qreal>(m_scale) / 100.0;
-    m_page.setViewportSize(QSize(width, 3 * width / 4) / scale_factor);
+	
+    m_page.setViewportSize( QSize( width, 3 * width / 4 ) / scale_factor );
 }
 
+// A progress indicator
 void WebCapture::showProgress(int percent)
 {
     if (m_percent >= percent)
@@ -129,10 +152,13 @@ void WebCapture::saveResult(bool ok)
     m_page.mainFrame()->render(&p);
     p.end();
 
-    // scale image, since we don't have full page zoom
+    // Scale the image. By default, the scale_factor will be 1 indicating no scaling.
     image = image.scaled(size * scale_factor, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
+	// Save out the image 
     image.save(m_fileName);
+	
+	// Done!
     emit finished();
 }
 
@@ -172,12 +198,15 @@ static QUrl guessUrlFromString(const QString &string)
 
 #include "webcapture.moc"
 
+// This provides the command line options
+
 int main(int argc, char * argv[])
 {
   
   OptionParser opts;
+  opts	= OptionParser("Here's how you use it:");
   
-  #define NULL ((char *)0)
+  //#define NULL ((char *)0)
   
   opts.add_option("-z", "--zoom-factor", "zoom", "the percentage factor to zoom the page by", "100");
   opts.add_option("-s", "--scale-factor", "scale", "the percentage factor to scale the final image by", "100");
@@ -195,20 +224,21 @@ int main(int argc, char * argv[])
   vector<std::string> arguments;
   arguments = opts.arguments;
   
+/*
   puts( "Debug\n\n" );
   std::cout << options["zoom"] << std::endl ;
   std::cout << options["output"] << std::endl;
   std::cout << options["width"] << std::endl ;
   std::cout << options["height"] << std::endl ;
+*/
     
   if ( arguments.size() == 0 ) {
-    puts( "args is zero");
     opts.help();
   } else {
     
     QUrl url          = guessUrlFromString( QString::fromLatin1( arguments[0].c_str() ) );
     int zoom          = qMax( 10, QString::fromLatin1( options["zoom"].c_str() ).toInt() );
-    int scale          = qMax( 10, QString::fromLatin1( options["scale"].c_str() ).toInt() );
+    int scale         = qMax( 10, QString::fromLatin1( options["scale"].c_str() ).toInt() );
     QString fileName  = QString::fromLatin1( options["output"].c_str() );
     int width         = QString::fromLatin1( options["width"].c_str() ).toInt();
     int height        = QString::fromLatin1( options["height"].c_str() ).toInt();
