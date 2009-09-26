@@ -202,9 +202,9 @@ static QUrl guessUrlFromString(const QString &string)
 
 int main(int argc, char * argv[])
 {
-  
+
   OptionParser opts;
-  opts	= OptionParser("Here's how you use it:");
+  opts	= OptionParser("webcapture 1.0, Captures images of web pages.\nUsage: webcapture [OPTIONS] URL\n");
   
   //#define NULL ((char *)0)
   
