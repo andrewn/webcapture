@@ -130,11 +130,11 @@ void WebCapture::saveResult(bool ok)
     // create the image for the buffer
     QSize size = m_page.mainFrame()->contentsSize();
     
-    if ( m_height ) {
+    if ( m_height != 0 ) {
       size.setHeight( m_height );
     }
     
-    if ( m_width ) {
+    if ( m_width != 0 ) {
       size.setWidth( m_width );
     }
     
@@ -211,7 +211,7 @@ int main(int argc, char * argv[])
   opts.add_option("-z", "--zoom-factor", "zoom", "the percentage factor to zoom the page by", "100");
   opts.add_option("-s", "--scale-factor", "scale", "the percentage factor to scale the final image by", "100");
   opts.add_option("-o", "--output", "output", "the output filepath to save to (MUST have an extension e.g. .png)", "image.png");
-  opts.add_option("-w", "--width", "width", "width of the viewport", "1024");
+  opts.add_option("-w", "--width", "width", "width of the viewport", "0");
   opts.add_option("-h", "--height", "height", "height of the viewport", "0");
   
   opts.parse_args( argc, argv );
