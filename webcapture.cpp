@@ -36,7 +36,7 @@ public:
     QImage image;
     WebCapture();
 	// Single method to load the web page and output to filesystem at a set scale, size
-    void load(const QUrl &url, int zoom, int scale, const QString &outputFileName, int width, int height);
+    void load(const QUrl &url, int zoom, int scale, const QString &outputFileName, int width, int height, int pause);
 
 signals:
     void finished();
@@ -45,6 +45,7 @@ private slots:
 	// Slots defined by Qt
     void showProgress(int percent);
     void saveResult(bool ok);
+	void saveImage();
 
 private:
     QWebPage m_page;
@@ -54,6 +55,8 @@ private:
     int m_scale;
     int m_height;
     int m_width;
+    int m_pause;
+	bool m_ok;
 };
 
 WebCapture::WebCapture(): QObject(), m_zoom(100), m_percent(0)
@@ -71,18 +74,22 @@ WebCapture::WebCapture(): QObject(), m_zoom(100), m_percent(0)
  * width  - the width of the output image
  * height - the height of the output image
  */
-void WebCapture::load(const QUrl &url, int zoom, int scale, const QString &outputFileName, int width, int height)
+void WebCapture::load(const QUrl &url, int zoom, int scale, const QString &outputFileName, int width, int height, int pause)
 {
     std::cout << "Loading " << qPrintable(url.toString()) << std::endl;
 	
 	// Store these values in the class instance
 	// as they're used later
+	m_ok = false;
+	
     m_zoom    = zoom;
     m_scale   = scale;
     m_percent = 0;
     
     m_height  = height;
     m_width   = width;
+    
+    m_pause   = pause * 1000;
     
     m_fileName = outputFileName;
 	
@@ -114,12 +121,24 @@ void WebCapture::showProgress(int percent)
         std::cout << "#" << std::flush;
 }
 
-void WebCapture::saveResult(bool ok)
+void WebCapture::saveResult(bool ok) 
+{
+	m_ok = ok;
+	
+	// If m_pause != 0 
+	if (m_pause == 0) {
+		saveImage();
+	} else {
+		QTimer::singleShot( m_pause, this, SLOT(saveImage()));
+	}
+}
+
+void WebCapture::saveImage()
 {
     std::cout << std::endl;
 
     // crude error-checking
-    if (!ok) {
+    if (!m_ok) {
         std::cerr << "Failed loading " << qPrintable(m_page.mainFrame()->url().toString()) << std::endl;
         emit finished();
         return;
@@ -213,6 +232,8 @@ int main(int argc, char * argv[])
   opts.add_option("-o", "--output", "output", "the output filepath to save to (MUST have an extension e.g. .png)", "image.png");
   opts.add_option("-w", "--width", "width", "width of the viewport", "0");
   opts.add_option("-h", "--height", "height", "height of the viewport", "0");
+  opts.add_option("-p", "--pause", "pause", "pause for X seconds before taking the screenshot (allows javascript etc to kick in)", "0");
+  
   
   opts.parse_args( argc, argv );
   
@@ -242,11 +263,12 @@ int main(int argc, char * argv[])
     QString fileName  = QString::fromLatin1( options["output"].c_str() );
     int width         = QString::fromLatin1( options["width"].c_str() ).toInt();
     int height        = QString::fromLatin1( options["height"].c_str() ).toInt();
+    int pause         = QString::fromLatin1( options["pause"].c_str() ).toInt();
     
     QApplication a(argc, argv);
     WebCapture capture;
     QObject::connect(&capture, SIGNAL(finished()), QApplication::instance(), SLOT(quit()));
-    capture.load(url, zoom, scale, fileName, width, height);
+    capture.load(url, zoom, scale, fileName, width, height, pause);
 
     return a.exec();
   }
